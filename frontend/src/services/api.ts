@@ -5,7 +5,7 @@ import type {
   BuyerInquiryItem,
 } from "../types/lead";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 
 export async function createLead(data: LeadCreateInput): Promise<CreatedLeadResult> {
   let response: Response;

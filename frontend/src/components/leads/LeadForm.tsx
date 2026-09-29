@@ -50,15 +50,26 @@ export default function LeadForm({ onCancel, buyerId, onSuccess }: LeadFormProps
     }
 
     setLoading(true);
+    let success = false;
+    let result: CreatedLeadResult | null = null;
     try {
-      const result = await createLead(trimmed);
-      setCreatedLead(result);
+      result = await createLead(trimmed);
+      success = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create the lead. Please try again.");
     } finally {
       setLoading(false);
     }
+
+    if (success && result) {
+      if (buyerId && onSuccess) {
+        onSuccess();
+      } else {
+        setCreatedLead(result);
+      }
+    }
   };
+
 
   if (createdLead) {
     if (buyerId) {
