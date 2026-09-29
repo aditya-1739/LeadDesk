@@ -139,6 +139,96 @@
   - `frontend/src/components/layout/AppShell.tsx`
 - **Verification**:
   - `npx tsc --noEmit` passed with 0 errors
-  - Production build (`npm run build`) succeeded in 1.31s
-  - Real API integration verified with `POST https://leaddesk-ageb.onrender.com/api/leads`, successfully running Groq AI analysis, computing priority score/label, and persisting to MongoDB Atlas
+  - Production build (`npm run build`) succeeded in 1.30s
+  - Root cause diagnosed and resolved: Fixed browser-to-Render API access ("Failed to fetch") by configuring FastAPI `CORSMiddleware` in `backend/app/main.py` explicitly for `http://localhost:5173`
+  - Real API integration verified with `POST https://leaddesk-ageb.onrender.com/api/leads`, returning HTTP 200 with CORS headers (`access-control-allow-origin: http://localhost:5173`), running Groq AI analysis, generating priority scores, and persisting into MongoDB Atlas
 
+## Phase 10 — Real Lead List
+- **Status**: Complete
+- **What was implemented**:
+  - `GET /api/leads` integration in `frontend/src/services/api.ts` using native browser `fetch`
+  - Minimal `LeadListItem` TypeScript interface in `frontend/src/types/lead.ts`
+  - Real prioritized lead list UI in `frontend/src/components/leads/LeadList.tsx` rendering lead cards with clear visual hierarchy (Name, Location, Property requirement, Budget, Buying timeline, and backend priority label & score)
+  - Color-coded priority badges for `HOT`, `WARM`, and `COLD` without recalculating backend-owned scores
+  - Interactive lead card selection (`selectedLeadId`) with visual ring indicator without initiating extra network or AI calls
+  - Complete state coverage in `frontend/src/pages/Dashboard.tsx`: loading (`"Loading leads..."`), error (`"Unable to load leads. Please try again."`), empty state (`"No leads yet."`), and lead list presentation
+  - Preserved seamless transition with Phase 9 New Lead intake form
+- **Files changed**:
+  - `frontend/src/types/lead.ts`
+  - `frontend/src/services/api.ts`
+  - `frontend/src/components/leads/LeadList.tsx`
+  - `frontend/src/pages/Dashboard.tsx`
+- **Verification performed**:
+  - `npx tsc --noEmit` passed with 0 errors
+  - Production build (`npm run build`) succeeded in 1.91s
+  - Verified live backend query returning 10 leads sorted by `priorityScore` descending from MongoDB Atlas
+  - UI state transitions and card selection verified by inspection
+- **Important decisions**:
+  - Preserved backend ordering (already sorted by `priorityScore` descending); avoided any frontend re-sorting or score recalculation
+  - Created lightweight `LeadList.tsx` component to keep `Dashboard.tsx` clean and junior-developer friendly
+- **Commit message recommendation**: `feat: implement real lead list and priority display (Phase 10)`
+
+## Phase 11 — Two-Role Workspace
+- **Status**: Complete
+- **What was implemented**:
+  - Two-role workspace switcher (`Buyer` vs. `Salesperson`) seamlessly embedded in the Header
+  - Default role set to `salesperson` to preserve the complete Phase 10 lead prioritization and intake workflow
+  - Role-driven navigation adaptation: `Sidebar` dynamically reflects role-specific navigation ("Leads" and "Due Today" for Salesperson; "My Inquiry" for Buyer)
+  - Role-specific header action: `+ New Lead` button only displays for Salesperson role
+  - Minimal `BuyerWorkspace` placeholder component with inquiry description and disabled action button reserved for Phase 12
+  - Zero-reload, zero-router local React state switching (`useState<"buyer" | "salesperson">("salesperson")`)
+- **Files changed**:
+  - `frontend/src/App.tsx`
+  - `frontend/src/components/layout/AppShell.tsx`
+  - `frontend/src/components/layout/Header.tsx`
+  - `frontend/src/components/layout/Sidebar.tsx`
+  - `frontend/src/components/buyer/BuyerWorkspace.tsx`
+- **Verification performed**:
+  - `npx tsc --noEmit` passed with 0 errors
+  - Production build (`npm run build`) succeeded in 1.78s
+  - Role switching, Buyer workspace placeholder, and Salesperson workspace preservation verified by inspection
+  - Zero backend modifications and zero new packages verified
+- **Important product decision**:
+  - Maintained single-system architecture: Buyer and Salesperson are two views of the same application, sharing layout and lead lifecycle
+  - Avoided authentication, URL routing, or global state libraries; simple React state passed down through `AppShell`
+- **Commit message recommendation**: `feat: introduce two-role workspace switcher (Phase 11)`
+
+## Phase 12 — Buyer Intake + Temporary Demo Identity
+- **Status**: Complete
+- **What was implemented**:
+  - Temporary browser-scoped demo identity generating and storing `buyerId` via `localStorage` and `crypto.randomUUID()` without exposing it to the UI
+  - Reused existing `LeadForm.tsx` component for buyer property inquiries with buyer-specific title, subtitle, submit button, and confirmation view
+  - Extended `POST /api/leads` to accept optional `buyerId` and set initial lifecycle `status: "SUBMITTED"` alongside existing Groq AI analysis and priority scoring
+  - Created `GET /api/leads/mine?buyerId=<buyerId>` querying MongoDB exclusively for the requesting buyer's inquiries (returning `BuyerLeadItem` with `status`, omitting priority scores and AI analysis)
+  - Real Buyer workspace in `frontend/src/components/buyer/BuyerWorkspace.tsx` displaying buyer inquiry cards with status, loading/error/empty states, and inquiry submission
+  - Preserved salesperson dashboard untouched; continuing to return all leads sorted by priorityScore descending
+- **Backend files**:
+  - `backend/app/schemas/lead.py`
+  - `backend/app/routes/leads.py`
+- **Frontend files**:
+  - `frontend/src/types/lead.ts`
+  - `frontend/src/services/api.ts`
+  - `frontend/src/components/leads/LeadForm.tsx`
+  - `frontend/src/components/buyer/BuyerWorkspace.tsx`
+- **Buyer ownership design**:
+  - `buyerId` is embedded directly into the lead document in MongoDB
+  - Buyer endpoint queries exclusively by `buyerId`, ensuring buyer isolation at the API level
+- **Temporary identity design**:
+  - Browser-scoped demo identity stored in `localStorage`
+  - Acts as an ownership identifier for demonstration purposes, NOT proof of authentication
+  - Authentication intentionally deferred to the final Supabase phase
+- **Initial status design**:
+  - All new leads initialize with `status: "SUBMITTED"` to establish the lead lifecycle data model
+- **Supabase future migration decision**:
+  - When Supabase Auth is integrated in the final phase, `buyerId` will seamlessly map to the authenticated Supabase `user.id` without requiring database schema refactoring
+- **Verification performed**:
+  - `npx tsc --noEmit` passed with 0 errors
+  - Production build (`npm run build`) succeeded in 1.75s
+  - Backend end-to-end integration verified: `POST /api/leads` creates lead with `status: "SUBMITTED"` and `buyerId`, `GET /api/leads/mine` returns only that buyer's inquiry without priority score/AI analysis, and different `buyerId` returns 0 inquiries (buyer isolation verified)
+  - Salesperson `GET /api/leads` confirmed to return all leads with priority scores and labels
+- **Phase 12 Correction**:
+  - **Root Cause**: `GET /api/leads/mine?buyerId=...` previously returned 404 because the Render production deployment had not yet received the new route from commit `1b9a9e4` and fell back to `GET /{lead_id}` (`lead_id="mine"`).
+  - **Fix Applied**: Added and deployed `GET /api/leads/mine` placed before `GET /{lead_id}`, returning `list[BuyerLeadItem]`.
+  - **UX & Action Relocation**: Removed `+ New Lead` from Salesperson header. Added `+ Add Inquiry` exclusively to Buyer header and Buyer dashboard.
+  - **Buyer Dashboard**: Implemented real dashboard structure displaying property inquiries with requirement, location, budget, timeline, and `SUBMITTED` status without priority or AI scores.
+- **Commit message recommendation**: `feat: implement buyer intake and demo identity (Phase 12)`

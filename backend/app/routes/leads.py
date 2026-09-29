@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 import uuid
 from fastapi import APIRouter, HTTPException
 from app.database.mongodb import db
-from app.schemas.lead import LeadCreate, LeadListItem, LeadResponse
+from app.schemas.lead import LeadCreate, LeadListItem, LeadResponse, BuyerLeadItem
 from app.services.ai import analyze_lead
 from app.services.scoring import calculate_priority
 
@@ -21,6 +21,7 @@ def create_lead(payload: LeadCreate):
     lead_doc = {
         "id": lead_id,
         **lead_data,
+        "status": "SUBMITTED",
         "analysis": analysis.model_dump(),
         "priorityScore": score,
         "priorityLabel": label,
@@ -39,6 +40,16 @@ def list_leads():
         {"_id": 0, "customerMessage": 0, "analysis": 0}
     ).sort("priorityScore", -1)
     return list(cursor)
+
+
+@router.get("/mine", response_model=list[BuyerLeadItem])
+def list_my_leads(buyerId: str):
+    cursor = db["leads"].find(
+        {"buyerId": buyerId},
+        {"_id": 0, "customerMessage": 0, "analysis": 0, "priorityScore": 0, "priorityLabel": 0}
+    ).sort("createdAt", -1)
+    return list(cursor)
+
 
 
 @router.get("/{lead_id}", response_model=LeadResponse)

@@ -4,6 +4,8 @@ import type { LeadCreateInput, CreatedLeadResult } from "../../types/lead";
 
 interface LeadFormProps {
   onCancel: () => void;
+  buyerId?: string;
+  onSuccess?: () => void;
 }
 
 const INITIAL_FORM: LeadCreateInput = {
@@ -15,7 +17,7 @@ const INITIAL_FORM: LeadCreateInput = {
   customerMessage: "",
 };
 
-export default function LeadForm({ onCancel }: LeadFormProps) {
+export default function LeadForm({ onCancel, buyerId, onSuccess }: LeadFormProps) {
   const [formData, setFormData] = useState<LeadCreateInput>(INITIAL_FORM);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +34,7 @@ export default function LeadForm({ onCancel }: LeadFormProps) {
       budget: formData.budget.trim(),
       buyingTimeline: formData.buyingTimeline.trim(),
       customerMessage: formData.customerMessage.trim(),
+      ...(buyerId ? { buyerId } : {}),
     };
 
     if (
@@ -58,6 +61,48 @@ export default function LeadForm({ onCancel }: LeadFormProps) {
   };
 
   if (createdLead) {
+    if (buyerId) {
+      return (
+        <div className="max-w-xl mx-auto rounded-lg border border-slate-200 bg-white p-6 shadow-xs">
+          <h2 className="text-lg font-semibold text-slate-900">Inquiry Received</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Your inquiry has been received. Our team will review your requirement and reach out shortly.
+          </p>
+          <div className="mt-4 rounded-md bg-slate-50 p-4 border border-slate-100 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-base font-semibold text-slate-900">{createdLead.name}</span>
+              <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200">
+                {createdLead.status || "SUBMITTED"}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500">{formData.location}</p>
+            <p className="text-sm text-slate-800 font-medium">{formData.propertyRequirement}</p>
+            <div className="flex gap-4 text-xs text-slate-600 pt-1">
+              <span>Budget: <strong className="text-slate-700">{formData.budget}</strong></span>
+              <span>·</span>
+              <span>Timeline: <strong className="text-slate-700">{formData.buyingTimeline}</strong></span>
+            </div>
+          </div>
+          <div className="mt-6 flex gap-3">
+            <button
+              type="button"
+              onClick={onSuccess || onCancel}
+              className="rounded-md bg-slate-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-slate-800 transition-colors"
+            >
+              View My Inquiry
+            </button>
+            <button
+              type="button"
+              onClick={() => { setCreatedLead(null); setFormData(INITIAL_FORM); }}
+              className="rounded-md border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Submit Another Inquiry
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="max-w-xl mx-auto rounded-lg border border-slate-200 bg-white p-6 shadow-xs">
         <h2 className="text-lg font-semibold text-slate-900">Lead Created Successfully</h2>
@@ -90,10 +135,18 @@ export default function LeadForm({ onCancel }: LeadFormProps) {
     );
   }
 
+
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl mx-auto rounded-lg border border-slate-200 bg-white p-6 shadow-xs">
-      <h2 className="text-lg font-semibold text-slate-900">New Lead</h2>
-      <p className="text-sm text-slate-500 mb-5">Add a lead and let AI analyze its priority.</p>
+      <h2 className="text-lg font-semibold text-slate-900">
+        {buyerId ? "Submit Property Inquiry" : "New Lead"}
+      </h2>
+      <p className="text-sm text-slate-500 mb-5">
+        {buyerId
+          ? "Tell us what you are looking for and our team will get in touch."
+          : "Add a lead and let AI analyze its priority."}
+      </p>
+
 
       {error && (
         <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700 border border-red-200">{error}</div>
@@ -178,7 +231,14 @@ export default function LeadForm({ onCancel }: LeadFormProps) {
           disabled={loading}
           className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60 transition-opacity"
         >
-          {loading ? "Analyzing lead..." : "Create Lead"}
+          {loading
+            ? buyerId
+              ? "Submitting inquiry..."
+              : "Analyzing lead..."
+            : buyerId
+            ? "Submit Inquiry"
+            : "Create Lead"}
+
         </button>
       </div>
     </form>
