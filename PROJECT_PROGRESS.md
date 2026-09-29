@@ -227,8 +227,126 @@
   - Backend end-to-end integration verified: `POST /api/leads` creates lead with `status: "SUBMITTED"` and `buyerId`, `GET /api/leads/mine` returns only that buyer's inquiry without priority score/AI analysis, and different `buyerId` returns 0 inquiries (buyer isolation verified)
   - Salesperson `GET /api/leads` confirmed to return all leads with priority scores and labels
 - **Phase 12 Correction**:
-  - **Root Cause**: `GET /api/leads/mine?buyerId=...` previously returned 404 because the Render production deployment had not yet received the new route from commit `1b9a9e4` and fell back to `GET /{lead_id}` (`lead_id="mine"`).
-  - **Fix Applied**: Added and deployed `GET /api/leads/mine` placed before `GET /{lead_id}`, returning `list[BuyerLeadItem]`.
+  - **Root Cause #1 (Endpoint 404)**: `GET /api/leads/mine?buyerId=...` previously returned 404 because the Render production deployment had not yet received the new route from commit `1b9a9e4` and fell back to `GET /{lead_id}` (`lead_id="mine"`). Fixed by deploying commit `cd16873` to Render.
+  - **Root Cause #2 (Lead creation form error & refresh)**: When `createLead()` succeeded, `LeadForm` did not immediately call `onSuccess()`, keeping the user on a sub-screen. Furthermore, any post-submission error handling in `LeadForm` could mislabel downstream issues as POST failures. Fixed by isolating `createLead` try/catch, immediately invoking `onSuccess()` upon success in buyer mode, which closes the form and re-fetches `GET /api/leads/mine?buyerId=...` so the new inquiry renders instantly in the buyer dashboard.
+  - **CORS & URL Hardening**: Added `http://127.0.0.1:5173` to CORS `allow_origins` alongside `http://localhost:5173`, and trimmed trailing slashes from `API_BASE_URL` in `api.ts`.
   - **UX & Action Relocation**: Removed `+ New Lead` from Salesperson header. Added `+ Add Inquiry` exclusively to Buyer header and Buyer dashboard.
   - **Buyer Dashboard**: Implemented real dashboard structure displaying property inquiries with requirement, location, budget, timeline, and `SUBMITTED` status without priority or AI scores.
 - **Commit message recommendation**: `feat: implement buyer intake and demo identity (Phase 12)`
+
+## Phase 10 Correction — Salesperson Lead Filtering + Sorting
+- **Status**: Complete
+- **What was implemented**:
+  - Priority filter pills: `[ ALL ] [ HOT ] [ WARM ] [ COLD ]` with live counts derived from fetched leads.
+  - Multi-field sorting dropdown (`Sort by`):
+    - Priority: High → Low (default)
+    - Priority: Low → High
+    - Date & Time: Newest → Oldest
+    - Date & Time: Oldest → Newest
+    - Budget: Highest → Lowest
+    - Budget: Lowest → Highest
+    - Buying Timeline: Earliest → Latest
+    - Buying Timeline: Latest → Earliest
+  - Currency normalization parser: handles numeric amounts, `lakh`/`L`/`lac`, `crore`/`cr`, currency symbols, and places unparseable values consistently at the end.
+  - Timeline parser: converts textual durations (days, weeks, months, years) to approximate days for comparison.
+  - Responsive stacking layout on mobile screens (`flex-col sm:flex-row`).
+  - Dynamic result heading count (`Prioritized Leads (N)`, `Hot Leads (N)`, etc.) and empty filter state (`No HOT leads found.`).
+  - Client-side derivation without extra MongoDB requests or backend changes.
+- **Verification**: Verified TypeScript compilation, production build, and browser filtering/sorting across all priority labels.
+
+## Phase 13 — Salesperson Priority Queue + Lead Quick Actions
+- **Status**: In Progress / Code Complete (Awaiting Backend Deployment / Verification)
+- **What was implemented**:
+  - **Temporary Salesperson Identity**: Browser-scoped demo identity stored in `localStorage` under `salespersonId` using `crypto.randomUUID()`.
+  - **Personal "My Priority" Queue**:
+    - Sidebar navigation item `My Priority` (alongside `Leads` and `Due Today`).
+    - Stored in browser `localStorage` as an array of prioritized lead IDs (`priorityLeadIds`).
+    - Dedicated view displaying manually selected leads, with custom heading and empty state (`No priority leads yet.`).
+    - Independent from AI Priority (a salesperson can manually prioritize WARM or COLD leads).
+  - **Quick Add / Remove Personal Priority**:
+    - Interactive toggle button directly on lead cards (`[ + Add to Priority ]` / `[ ✓ In Priority ]`).
+    - Interactive action button on the lead detail floating action bar (`[ + Add to Priority ]` / `[ ✓ Remove from Priority ]`).
+  - **Lead Detail View (`LeadDetail.tsx`)**:
+    - Zero-router application state navigation via `selectedLeadId` with `← Back to Leads`.
+    - Preserves active filter and sort state upon returning to the list.
+    - Shows basic info (Name, Location, Property requirement, Budget, Buying timeline, Customer message).
+    - Shows AI Analysis (Summary, Intent, Key requirements, Objections/concerns, Recommended next action, Suggested response).
+    - Shows AI Priority breakdown and 5 score signals (Intent Strength, Timeline Urgency, Budget Fit, Requirement Clarity, Engagement Signal) with scores & reasons.
+    - Uses stored MongoDB analysis from `GET /api/leads/{id}` without re-triggering AI analysis.
+  - **Floating Quick-Action Bar**:
+    - Sticky/floating action bar at the bottom of Lead Detail view.
+    - Actions: `[ Add/Remove Priority ]`, `[ Mark Contacted ]`, `[ Follow Up ]`.
+  - **Quick Action: Mark Contacted**:
+    - Backend: `PATCH /api/leads/{id}/status` transitioning status to `CONTACTED` and recording `updatedAt`.
+    - Updates salesperson UI immediately and reflects on the buyer inquiry endpoint (`GET /api/leads/mine`).
+  - **Quick Action: Follow Up**:
+    - Backend: `POST /api/leads/{id}/follow-up-plan`.
+    - Uses Groq (`openai/gpt-oss-20b`) with strict schema to generate a structured follow-up item (`action`, `dueAt`, `reason`, `status: "PENDING"`) based on stored lead data and analysis.
+    - Appends follow-up item to `lead["followUpPlan"]` directly in MongoDB.
+- **Files Modified / Created**:
+  - `backend/app/schemas/lead.py`
+  - `backend/app/services/ai.py`
+  - `backend/app/routes/leads.py`
+  - `frontend/src/types/lead.ts`
+  - `frontend/src/services/api.ts`
+  - `frontend/src/components/layout/Sidebar.tsx`
+  - `frontend/src/components/layout/Header.tsx`
+  - `frontend/src/components/layout/AppShell.tsx`
+  - `frontend/src/components/leads/LeadList.tsx`
+  - `frontend/src/components/leads/LeadDetail.tsx` (new)
+  - `frontend/src/pages/Dashboard.tsx`
+  - `frontend/src/App.tsx`
+- **Future Supabase Migration Note**:
+  - `salespersonId` will map to Supabase authenticated `user.id`.
+  - `priorityLeadIds` can be migrated to a user profile or salesperson preference table without altering the core lead model.
+- **Recommended commit message**: `feat: implement salesperson priority queue, lead detail, and quick actions (Phase 13)`
+
+## Product-Direction Change — Salesperson-Only LeadDesk
+- **Status**: Complete
+- **What was changed**:
+  - Transformed LeadDesk into a dedicated **salesperson-only application**. Customers contact the business externally (phone, WhatsApp, website, walk-in), and the salesperson manually enters and manages leads in LeadDesk.
+  - Removed all Buyer concepts, roles, and endpoints:
+    - Removed `Salesperson | Buyer` role switcher from Header.
+    - Removed `My Inquiry` navigation and workspace from Sidebar.
+    - Deleted `frontend/src/components/buyer/BuyerWorkspace.tsx` and removed buyer identity (`buyerId` generation and localStorage storage).
+    - Removed `GET /api/leads/mine` and buyer fields from backend schemas.
+  - Repurposed lead creation:
+    - Prominently placed `+ Add Lead` in the Salesperson Header and empty states.
+    - Salesperson creates leads using the existing `LeadForm.tsx`, triggering Groq AI analysis, priority scoring, and immediate insertion into the salesperson dashboard.
+  - Preserved all core salesperson capabilities:
+    - `POST /api/leads` (Groq AI analysis, 5 score signals, priority scoring, HOT/WARM/COLD, MongoDB persistence).
+    - `GET /api/leads` and `GET /api/leads/{id}`.
+    - `PATCH /api/leads/{id}/status` (`Mark Contacted`).
+    - `POST /api/leads/{id}/follow-up-plan` (Groq AI follow-up plan generation).
+    - Priority queue (`My Priority`), Due Today, Lead Detail view, filtering, and sorting.
+- **Verification**:
+  - Frontend TypeScript check (`npx tsc --noEmit`) passed with 0 errors.
+  - Frontend production build (`npm run build`) succeeded with 0 errors.
+  - Backend modules compiled cleanly (`python -m py_compile`).
+  - Backend uvicorn server running cleanly with all core routes verified.
+
+## Modification — Responsive Card Grid & Delete Lead
+- **Status**: Complete
+- **What was implemented**:
+  - **Responsive Card Grid**:
+    - Converted vertical lead list into a responsive card grid (`grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`).
+    - Desktop: 3 cards per row; Tablet: 2 cards per row; Mobile: 1 card per row.
+    - Preserved existing white background, border, rounded corners, typography, spacing style, HOT/WARM/COLD badges, priority score, status, and Add to Priority button.
+    - Preserved all lead card information: Name, Location, Property requirement, Budget, Buying timeline, AI priority label, AI priority score, Status, and Priority toggle.
+  - **Delete Lead Backend**:
+    - Added `DELETE /api/leads/{lead_id}` to delete the lead document and associated follow-up data from MongoDB Atlas. Returns 404 if lead is not found.
+  - **Delete UI & Confirmation**:
+    - Added subtle three-dot menu (`⋮`) in the top-right of each lead card with `View Lead`, `Add/Remove from Priority`, and `Delete Lead`.
+    - Added subtle `Delete Lead` button in `LeadDetail` header.
+    - Added confirmation dialog with "Delete Lead?", message with lead name, Cancel button, and Delete button.
+    - On confirmed deletion:
+      - Removes lead from state without page reload.
+      - Filter counts update immediately.
+      - Preserves current filter and sort selection.
+      - Automatically removes lead from `priorityLeadIds` / `localStorage.priorityLeadIds`.
+      - Safely navigates back to Leads list if deleted while inside `LeadDetail`.
+      - Naturally disappears from Due Today.
+- **Verification**:
+  - `npx tsc --noEmit` passed with 0 errors.
+  - `npm run build` succeeded with 0 errors in 1.47s.
+  - Backend modules compiled with 0 errors (`python -m py_compile`).

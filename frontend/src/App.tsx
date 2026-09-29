@@ -1,32 +1,30 @@
 import { useState } from "react";
 import AppShell from "./components/layout/AppShell";
 import Dashboard from "./pages/Dashboard";
-import BuyerWorkspace from "./components/buyer/BuyerWorkspace";
 
 export default function App() {
-  const [role, setRole] = useState<"buyer" | "salesperson">("salesperson");
-  const [showBuyerForm, setShowBuyerForm] = useState(false);
+  const [activeNav, setActiveNav] = useState<"leads" | "my-priority" | "due-today">("leads");
+  const [showAddLead, setShowAddLead] = useState(false);
 
   return (
     <AppShell
-      role={role}
-      onRoleChange={(newRole) => {
-        setRole(newRole);
-        setShowBuyerForm(false);
+      activeNav={activeNav}
+      onNavChange={(nav) => {
+        setActiveNav(nav);
+        setShowAddLead(false);
       }}
-      onAddInquiryClick={() => setShowBuyerForm(true)}
+      onAddLeadClick={() => setShowAddLead(true)}
     >
-      {role === "buyer" ? (
-        <BuyerWorkspace
-          showForm={showBuyerForm}
-          onOpenForm={() => setShowBuyerForm(true)}
-          onCloseForm={() => setShowBuyerForm(false)}
-        />
-      ) : (
-        <Dashboard />
-      )}
+      <Dashboard
+        activeNav={activeNav}
+        onNavChange={setActiveNav}
+        showAddLead={showAddLead}
+        onOpenAddLead={() => setShowAddLead(true)}
+        onCloseAddLead={() => setShowAddLead(false)}
+      />
     </AppShell>
   );
 }
+
 
 

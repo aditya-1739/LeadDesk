@@ -73,3 +73,62 @@ def analyze_lead(lead: dict) -> LeadAnalysis:
         return _call_groq(prompt)
     except (ValidationError, json.JSONDecodeError):
         return _call_groq(prompt)
+
+
+def _get_follow_up_strict_schema() -> dict:
+    from app.schemas.lead import FollowUpItem
+    schema = FollowUpItem.model_json_schema()
+
+    def _format_strict(node: dict):
+        if node.get("type") == "object":
+            node["additionalProperties"] = False
+            node["required"] = list(node.get("properties", {}).keys())
+        node.pop("minimum", None)
+        node.pop("maximum", None)
+        for value in node.values():
+            if isinstance(value, dict):
+                _format_strict(value)
+
+    _format_strict(schema)
+    return schema
+
+
+def generate_follow_up(lead: dict):
+    from app.schemas.lead import FollowUpItem
+    if not client:
+        raise ValueError("GROQ_API_KEY is not configured.")
+
+    analysis = lead.get("analysis", {})
+    prompt = (
+        "You are an assistant to a real estate salesperson. Based on the lead details and existing AI analysis, "
+        "generate a single concise, practical next follow-up action plan item for the salesperson.\n\n"
+        f"Lead Name: {lead.get('name', '')}\n"
+        f"Location: {lead.get('location', '')}\n"
+        f"Property Requirement: {lead.get('propertyRequirement', '')}\n"
+        f"Budget: {lead.get('budget', '')}\n"
+        f"Buying Timeline: {lead.get('buyingTimeline', '')}\n"
+        f"Customer Message: {lead.get('customerMessage', '')}\n"
+        f"Intent: {analysis.get('intent', '')}\n"
+        f"Recommended Next Action: {analysis.get('nextAction', '')}\n\n"
+        "Return structured JSON matching the schema with fields: action, dueAt, reason, status ('PENDING')."
+    )
+
+    response = client.chat.completions.create(
+        model="openai/gpt-oss-20b",
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "follow_up_item",
+                "strict": True,
+                "schema": _get_follow_up_strict_schema(),
+            },
+        },
+    )
+
+    content = response.choices[0].message.content
+    data = json.loads(content)
+    return FollowUpItem.model_validate(data)
+

@@ -4,25 +4,24 @@ import Header from "./Header";
 
 interface AppShellProps {
   children: ReactNode;
-  role: "buyer" | "salesperson";
-  onRoleChange: (role: "buyer" | "salesperson") => void;
-  onAddInquiryClick?: () => void;
+  activeNav?: "leads" | "my-priority" | "due-today";
+  onNavChange?: (nav: "leads" | "my-priority" | "due-today") => void;
+  onAddLeadClick?: () => void;
 }
 
 export default function AppShell({
   children,
-  role,
-  onRoleChange,
-  onAddInquiryClick,
+  activeNav,
+  onNavChange,
+  onAddLeadClick,
 }: AppShellProps) {
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-slate-50">
-      <Sidebar role={role} />
+      <Sidebar activeNav={activeNav} onNavChange={onNavChange} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header
-          role={role}
-          onRoleChange={onRoleChange}
-          onAddInquiryClick={onAddInquiryClick}
+          activeNav={activeNav}
+          onAddLeadClick={onAddLeadClick}
         />
 
         <main className="flex-1 p-6 overflow-auto">
@@ -32,4 +31,5 @@ export default function AppShell({
     </div>
   );
 }
+
 

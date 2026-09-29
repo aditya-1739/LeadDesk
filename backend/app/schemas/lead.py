@@ -1,5 +1,17 @@
+from typing import Literal
 from pydantic import BaseModel
 from app.schemas.analysis import LeadAnalysis
+
+
+class FollowUpItem(BaseModel):
+    action: str
+    dueAt: str
+    reason: str
+    status: str = "PENDING"
+
+
+class LeadStatusUpdate(BaseModel):
+    status: Literal["CONTACTED"]
 
 
 class LeadCreate(BaseModel):
@@ -9,7 +21,6 @@ class LeadCreate(BaseModel):
     budget: str
     buyingTimeline: str
     customerMessage: str
-    buyerId: str | None = None
 
 
 class LeadListItem(BaseModel):
@@ -23,17 +34,8 @@ class LeadListItem(BaseModel):
     priorityLabel: str
     status: str = "SUBMITTED"
     createdAt: str
-
-
-class BuyerLeadItem(BaseModel):
-    id: str
-    name: str
-    location: str
-    propertyRequirement: str
-    budget: str
-    buyingTimeline: str
-    status: str = "SUBMITTED"
-    createdAt: str
+    updatedAt: str | None = None
+    followUpPlan: list[FollowUpItem] = []
 
 
 class LeadResponse(BaseModel):
@@ -48,6 +50,7 @@ class LeadResponse(BaseModel):
     priorityScore: int
     priorityLabel: str
     status: str = "SUBMITTED"
-    buyerId: str | None = None
     createdAt: str
+    updatedAt: str | None = None
+    followUpPlan: list[FollowUpItem] = []
 

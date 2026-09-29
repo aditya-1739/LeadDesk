@@ -2,8 +2,14 @@ from datetime import datetime, timezone
 import uuid
 from fastapi import APIRouter, HTTPException
 from app.database.mongodb import db
-from app.schemas.lead import LeadCreate, LeadListItem, LeadResponse, BuyerLeadItem
-from app.services.ai import analyze_lead
+from app.schemas.lead import (
+    LeadCreate,
+    LeadListItem,
+    LeadResponse,
+    LeadStatusUpdate,
+    FollowUpItem,
+)
+from app.services.ai import analyze_lead, generate_follow_up
 from app.services.scoring import calculate_priority
 
 router = APIRouter(prefix="/api/leads", tags=["leads"])
@@ -42,13 +48,12 @@ def list_leads():
     return list(cursor)
 
 
-@router.get("/mine", response_model=list[BuyerLeadItem])
-def list_my_leads(buyerId: str):
-    cursor = db["leads"].find(
-        {"buyerId": buyerId},
-        {"_id": 0, "customerMessage": 0, "analysis": 0, "priorityScore": 0, "priorityLabel": 0}
-    ).sort("createdAt", -1)
-    return list(cursor)
+@router.delete("/{lead_id}")
+def delete_lead(lead_id: str):
+    res = db["leads"].delete_one({"id": lead_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return {"status": "ok", "message": "Lead deleted successfully"}
 
 
 
@@ -84,3 +89,42 @@ def reanalyze_lead(lead_id: str):
     lead["priorityScore"] = score
     lead["priorityLabel"] = label
     return lead
+
+
+@router.patch("/{lead_id}/status", response_model=LeadResponse)
+def update_lead_status(lead_id: str, payload: LeadStatusUpdate):
+    lead = db["leads"].find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    now = datetime.now(timezone.utc).isoformat()
+    db["leads"].update_one(
+        {"id": lead_id},
+        {"$set": {"status": payload.status, "updatedAt": now}},
+    )
+
+    lead["status"] = payload.status
+    lead["updatedAt"] = now
+    return lead
+
+
+@router.post("/{lead_id}/follow-up-plan", response_model=FollowUpItem)
+def create_follow_up_plan(lead_id: str):
+    lead = db["leads"].find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    follow_up = generate_follow_up(lead)
+    follow_up_dict = follow_up.model_dump()
+    now = datetime.now(timezone.utc).isoformat()
+
+    db["leads"].update_one(
+        {"id": lead_id},
+        {
+            "$push": {"followUpPlan": follow_up_dict},
+            "$set": {"updatedAt": now},
+        },
+    )
+
+    return follow_up
+
