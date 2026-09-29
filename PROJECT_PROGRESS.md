@@ -61,7 +61,7 @@
 - **Files changed**:
   - `backend/app/services/scoring.py`
 - **Verification**: Manually verified edge cases (0–10 scale, 0–100 scale, zero minimum, max 100, and out-of-bounds error handling)
-- **Commit**: Pending (Do not commit)
+- **Commit**: `feat: build LeadDesk backend core` (`adc1f0b`)
 
 ## Phase 5 — Lead Persistence and Core API
 - **Status**: Complete
@@ -76,4 +76,69 @@
   - `backend/app/routes/leads.py`
   - `backend/app/main.py`
 - **Verification**: Verified health check, lead creation with Groq AI analysis, MongoDB ranking by priorityScore, stored retrieval, re-analysis, and 404 handling
-- **Commit**: Pending (Do not commit)
+- **Commit**: `feat: build LeadDesk backend core` (`adc1f0b`)
+
+## Phase 6 — Repository Setup & Backend Deployment
+- **Status**: Complete
+- **What was implemented**:
+  - GitHub repository connection (`https://github.com/aditya-1739/LeadDesk`)
+  - Pushed core backend with zero credentials committed
+  - Render deployment configured at `https://leaddesk-ageb.onrender.com`
+- **Verification**:
+  - `GET https://leaddesk-ageb.onrender.com/api/health` returned HTTP 200 `{"status": "ok"}`
+  - Repository branch `main` synchronized
+- **Commit**: `feat: build LeadDesk backend core` (`adc1f0b`)
+
+## Phase 7 — Real Lead Seed Data
+- **Status**: Complete
+- **What was implemented**:
+  - Standalone seeding script (`backend/seed_leads.py`) using Python standard library (`urllib.request`, `json`)
+  - Configured 5 realistic lead profiles covering HOT, WARM, and COLD purchase intent
+  - Routes requests through the production API (`POST /api/leads`) to exercise the real Groq AI analysis and scoring flow
+- **Important files**:
+  - `backend/seed_leads.py`
+- **Verification**: Script structure, payloads, and API endpoint integration verified
+
+## Phase 8 — Frontend Shell
+- **Status**: Complete
+- **What was implemented**:
+  - React, Vite, and TypeScript frontend initialized in `frontend/`
+  - Tailwind CSS v4 configured with `@tailwindcss/vite`
+  - Application shell (`AppShell`, `Sidebar`, `Header`) and `Dashboard` placeholder
+  - Responsive layout: vertical sidebar on desktop (md+) and clean horizontal top navigation on mobile (<md) without JavaScript state
+  - Disabled `+ New Lead` action button and page title in header
+  - Established `VITE_API_BASE_URL` in `frontend/.env.example`
+  - All default Vite demo files, SVGs, and boilerplates removed
+- **Important files**:
+  - `frontend/src/components/layout/AppShell.tsx`
+  - `frontend/src/components/layout/Sidebar.tsx`
+  - `frontend/src/components/layout/Header.tsx`
+  - `frontend/src/pages/Dashboard.tsx`
+  - `frontend/src/App.tsx`
+  - `frontend/src/index.css`
+  - `frontend/vite.config.ts`
+  - `frontend/.env.example`
+- **Verification**: Local Vite server runs cleanly at `http://localhost:5173/`, zero TypeScript errors, successful production build, and verified responsive layout
+
+## Phase 9 — Lead Intake Form + Real Create API
+- **Status**: Complete
+- **What was implemented**:
+  - Functional `+ New Lead` button in Header toggling between Dashboard workspace and intake form
+  - Lead intake form with 6 required fields (`name`, `location`, `propertyRequirement`, `budget`, `buyingTimeline`, `customerMessage`)
+  - Client-side required-field validation trimming inputs before dispatch
+  - Minimal API service (`frontend/src/services/api.ts`) using native browser `fetch`
+  - Minimal TypeScript definitions (`frontend/src/types/lead.ts`) matching backend schema
+  - Comprehensive UI states: loading (`"Analyzing lead..."` with disabled submit to prevent double-submission), success confirmation (showing lead name, priority label, and score with return/create-another actions), and error handling preserving entered inputs
+  - Responsive Tailwind layout maintaining accessibility, form labels, and focus states
+- **Important files**:
+  - `frontend/src/components/leads/LeadForm.tsx`
+  - `frontend/src/services/api.ts`
+  - `frontend/src/types/lead.ts`
+  - `frontend/src/App.tsx`
+  - `frontend/src/components/layout/Header.tsx`
+  - `frontend/src/components/layout/AppShell.tsx`
+- **Verification**:
+  - `npx tsc --noEmit` passed with 0 errors
+  - Production build (`npm run build`) succeeded in 1.31s
+  - Real API integration verified with `POST https://leaddesk-ageb.onrender.com/api/leads`, successfully running Groq AI analysis, computing priority score/label, and persisting to MongoDB Atlas
+
