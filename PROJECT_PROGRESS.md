@@ -350,3 +350,32 @@
   - `npx tsc --noEmit` passed with 0 errors.
   - `npm run build` succeeded with 0 errors in 1.47s.
   - Backend modules compiled with 0 errors (`python -m py_compile`).
+
+## Modification — UI Improvements + Salesperson AI Contact Assistance
+- **Status**: Complete
+- **What was implemented**:
+  - **Improved "Back to Leads" Navigation**:
+    - Replaced the small text link with a clear, comfortable button (`px-3.5 py-2 text-xs font-semibold`) positioned consistently above the lead detail card.
+  - **Optional Phone & Email in Lead Form**:
+    - Added optional `Phone Number` (`type="tel"`) and `Email` (`type="email"`) to `LeadForm.tsx`.
+    - Updated backend models (`LeadCreate`, `LeadListItem`, `LeadResponse`) and MongoDB persistence to store optional `phone` and `email`.
+    - Displayed phone and email on `LeadDetail.tsx` only when available (no ugly placeholders).
+  - **Contact Action & Method Chooser on Lead Detail**:
+    - Added prominent `Contact` button in the header card with a popover chooser for `Phone`, `Email`, `WhatsApp`, and `Instagram` with custom SVG icons.
+  - **AI-Generated Outreach Draft (`ContactDraftModal.tsx`)**:
+    - Backend endpoint `POST /api/leads/{id}/contact-draft` generating tailored messages for Phone (call script/talking points), Email (subject & body), WhatsApp (message), and Instagram (DM).
+    - UI provides editable draft fields and a `Copy` button with visual confirmation.
+  - **Floating AI Agent Chat on Lead Detail (`LeadAgentChat.tsx`)**:
+    - Circular floating button fixed at bottom-right of viewport (`bottom-24 right-6`) with assistant icon.
+    - Floating chat panel with context loaded from the active lead, auto-scrolling conversation, quick starter prompts, input box, and send button.
+    - Backend endpoint `POST /api/leads/{id}/chat` reusing the existing Groq AI model with prompt-injection defense (`<CUSTOMER_MESSAGE>`).
+- **Files Modified / Created**:
+  - `backend/app/schemas/lead.py`
+  - `backend/app/routes/leads.py`
+  - `backend/app/services/ai.py`
+  - `frontend/src/types/lead.ts`
+  - `frontend/src/services/api.ts`
+  - `frontend/src/components/leads/LeadForm.tsx`
+  - `frontend/src/components/leads/LeadDetail.tsx`
+  - `frontend/src/components/leads/ContactDraftModal.tsx` (new)
+  - `frontend/src/components/leads/LeadAgentChat.tsx` (new)

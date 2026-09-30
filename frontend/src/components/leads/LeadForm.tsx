@@ -10,6 +10,8 @@ interface LeadFormProps {
 const INITIAL_FORM: LeadCreateInput = {
   name: "",
   location: "",
+  phone: "",
+  email: "",
   propertyRequirement: "",
   budget: "",
   buyingTimeline: "",
@@ -29,6 +31,8 @@ export default function LeadForm({ onCancel, onSuccess }: LeadFormProps) {
     const trimmed: LeadCreateInput = {
       name: formData.name.trim(),
       location: formData.location.trim(),
+      phone: formData.phone?.trim() || undefined,
+      email: formData.email?.trim() || undefined,
       propertyRequirement: formData.propertyRequirement.trim(),
       budget: formData.budget.trim(),
       buyingTimeline: formData.buyingTimeline.trim(),
@@ -43,7 +47,7 @@ export default function LeadForm({ onCancel, onSuccess }: LeadFormProps) {
       !trimmed.buyingTimeline ||
       !trimmed.customerMessage
     ) {
-      setError("All fields are required. Please fill in all fields.");
+      setError("Please fill in all required fields.");
       return;
     }
 
@@ -132,6 +136,34 @@ export default function LeadForm({ onCancel, onSuccess }: LeadFormProps) {
             onChange={(e) => setFormData({ ...formData, location: e.target.value })}
             className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-hidden"
           />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="lead-phone" className="block text-sm font-medium text-slate-700">
+              Phone Number <span className="text-xs text-slate-400 font-normal">(Optional)</span>
+            </label>
+            <input
+              id="lead-phone"
+              type="tel"
+              value={formData.phone || ""}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              placeholder="+91 98765 43210"
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-hidden"
+            />
+          </div>
+          <div>
+            <label htmlFor="lead-email" className="block text-sm font-medium text-slate-700">
+              Email <span className="text-xs text-slate-400 font-normal">(Optional)</span>
+            </label>
+            <input
+              id="lead-email"
+              type="email"
+              value={formData.email || ""}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="customer@example.com"
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-hidden"
+            />
+          </div>
         </div>
         <div>
           <label htmlFor="lead-req" className="block text-sm font-medium text-slate-700">Property Requirement</label>

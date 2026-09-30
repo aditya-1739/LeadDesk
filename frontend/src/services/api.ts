@@ -4,6 +4,10 @@ import type {
   LeadListItem,
   LeadDetail,
   FollowUpItem,
+  ContactMethod,
+  ContactDraftResponse,
+  ChatMessage,
+  LeadChatResponse,
 } from "../types/lead";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
@@ -110,6 +114,55 @@ export async function deleteLead(leadId: string): Promise<void> {
   if (!response.ok) {
     throw new Error("Unable to delete lead. Please try again.");
   }
+}
+
+export async function generateContactDraft(
+  leadId: string,
+  method: ContactMethod
+): Promise<ContactDraftResponse> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/leads/${encodeURIComponent(leadId)}/contact-draft`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ method }),
+    });
+  } catch {
+    throw new Error("Unable to connect to the server. Please try again.");
+  }
+
+  if (!response.ok) {
+    throw new Error("Unable to generate contact draft. Please try again.");
+  }
+
+  return response.json();
+}
+
+export async function chatWithLeadAgent(
+  leadId: string,
+  message: string,
+  history: ChatMessage[]
+): Promise<LeadChatResponse> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/leads/${encodeURIComponent(leadId)}/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message, history }),
+    });
+  } catch {
+    throw new Error("Unable to connect to the server. Please try again.");
+  }
+
+  if (!response.ok) {
+    throw new Error("Unable to get AI assistant response. Please try again.");
+  }
+
+  return response.json();
 }
 
 

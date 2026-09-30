@@ -5,6 +5,8 @@ export interface LeadCreateInput {
   budget: string;
   buyingTimeline: string;
   customerMessage: string;
+  phone?: string;
+  email?: string;
 }
 
 export interface CreatedLeadResult {
@@ -17,6 +19,8 @@ export interface CreatedLeadResult {
   propertyRequirement?: string;
   budget?: string;
   buyingTimeline?: string;
+  phone?: string;
+  email?: string;
 }
 
 export interface ScoreSignal {
@@ -58,6 +62,8 @@ export interface LeadListItem {
   createdAt: string;
   updatedAt?: string;
   followUpPlan?: FollowUpItem[];
+  phone?: string;
+  email?: string;
 }
 
 export interface LeadDetail {
@@ -75,6 +81,36 @@ export interface LeadDetail {
   createdAt: string;
   updatedAt?: string;
   followUpPlan?: FollowUpItem[];
+  phone?: string;
+  email?: string;
+}
+
+export type ContactMethod = "phone" | "email" | "whatsapp" | "instagram";
+
+export interface ContactDraftRequest {
+  method: ContactMethod;
+}
+
+export interface ContactDraftResponse {
+  method: ContactMethod;
+  subject?: string;
+  body?: string;
+  message?: string;
+  script?: string;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface LeadChatRequest {
+  message: string;
+  history: ChatMessage[];
+}
+
+export interface LeadChatResponse {
+  reply: string;
 }
 
 

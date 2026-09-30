@@ -8,8 +8,17 @@ from app.schemas.lead import (
     LeadResponse,
     LeadStatusUpdate,
     FollowUpItem,
+    ContactDraftRequest,
+    ContactDraftResponse,
+    LeadChatRequest,
+    LeadChatResponse,
 )
-from app.services.ai import analyze_lead, generate_follow_up
+from app.services.ai import (
+    analyze_lead,
+    generate_follow_up,
+    generate_contact_draft,
+    chat_with_lead_agent,
+)
 from app.services.scoring import calculate_priority
 
 router = APIRouter(prefix="/api/leads", tags=["leads"])
@@ -127,4 +136,31 @@ def create_follow_up_plan(lead_id: str):
     )
 
     return follow_up
+
+
+@router.post("/{lead_id}/contact-draft", response_model=ContactDraftResponse)
+def create_contact_draft(lead_id: str, payload: ContactDraftRequest):
+    lead = db["leads"].find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    try:
+        draft = generate_contact_draft(lead, payload.method)
+        return draft
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate contact draft: {str(e)}")
+
+
+@router.post("/{lead_id}/chat", response_model=LeadChatResponse)
+def chat_lead(lead_id: str, payload: LeadChatRequest):
+    lead = db["leads"].find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    try:
+        history_dicts = [msg.model_dump() for msg in payload.history]
+        reply = chat_with_lead_agent(lead, payload.message, history_dicts)
+        return {"reply": reply}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get AI assistant response: {str(e)}")
 

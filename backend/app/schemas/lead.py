@@ -21,6 +21,8 @@ class LeadCreate(BaseModel):
     budget: str
     buyingTimeline: str
     customerMessage: str
+    phone: str | None = None
+    email: str | None = None
 
 
 class LeadListItem(BaseModel):
@@ -36,6 +38,8 @@ class LeadListItem(BaseModel):
     createdAt: str
     updatedAt: str | None = None
     followUpPlan: list[FollowUpItem] = []
+    phone: str | None = None
+    email: str | None = None
 
 
 class LeadResponse(BaseModel):
@@ -53,4 +57,32 @@ class LeadResponse(BaseModel):
     createdAt: str
     updatedAt: str | None = None
     followUpPlan: list[FollowUpItem] = []
+    phone: str | None = None
+    email: str | None = None
+
+
+class ContactDraftRequest(BaseModel):
+    method: Literal["phone", "email", "whatsapp", "instagram"]
+
+
+class ContactDraftResponse(BaseModel):
+    method: str
+    subject: str | None = None
+    body: str | None = None
+    message: str | None = None
+    script: str | None = None
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class LeadChatRequest(BaseModel):
+    message: str
+    history: list[ChatMessage] = []
+
+
+class LeadChatResponse(BaseModel):
+    reply: str
 
